@@ -228,6 +228,25 @@ macro_rules! impl_has_id {
         }
 
         impl Eq for $struct_name {}
+
+        impl serde::Serialize for $struct_name {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where S: serde::Serializer
+            {
+                self.id().serialize(serializer)
+            }
+        }
+
+        impl<'de> serde::Deserialize<'de> for $struct_name {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where D: serde::Deserializer<'de>
+            {
+                let id = ObjectId::<Self>::deserialize(deserializer)?;
+                id.try_resolve()
+                    .map_err(serde::de::Error::custom)
+                    .and_then(|opt| opt.ok_or(serde::de::Error::custom(format!("Object ID {} was none", id))))
+            }
+        }
     )*};
 }
 
